@@ -1,0 +1,82 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Data Cleaning & Transformation | CDS227</title><link rel="stylesheet" href="../css/style.css"></head><body>
+<header class="topbar"><a class="brand" href="../index.html"><span class="brand-mark">D</span><span>CDS<span class="muted">227</span><small>DATA ENGINEERING LAB</small></span></a><nav><a href="../index.html">Home</a><a href="web-scraping.html">Web Scraping</a><a href="data-cleaning-transformation.html">Transformation</a><a href="data-cleaning-encoding.html">Encoding</a></nav></header>
+<section class="page-hero"><a class="back-link" href="../index.html">← BACK TO HOME</a><div class="eyebrow">PRACTICAL MODULE / CDS227</div><h1>Data Cleaning & Transformation</h1><p>Clean incomplete or repeated records, engineer useful columns and scale numeric features.</p></section>
+<main class="page-layout"><aside class="sidebar"><b>ON THIS PAGE</b><a href="#sec0">Overview</a><a href="#sec1">Load a CSV and inspect it</a><a href="#sec2">Missing values — identify and handle</a><a href="#sec3">Duplicate records</a><a href="#sec4">Create a new calculated column</a><a href="#sec5">Min-Max Normalization</a><a href="#sec6">Standardization (Z-score)</a><a href="#sec7">Save and verify the transformed CSV</a><a href="#sec8">Complete Set B-style 15-mark program</a></aside><div class="content"><section class="content-section" id="sec0"><h2>What this module covers</h2><p>This module combines the Set B operations and reusable CSV preprocessing patterns. Always inspect the dataset first and match the column names and output filename exactly to the question.</p></section><section class="content-section" id="sec1"><h2>Load a CSV and inspect it</h2><p>Start every CSV question by importing the libraries, loading the exact file and inspecting its columns. Check <code>df.columns</code> before using column names in later operations.</p><div class="code-wrap"><div class="code-label"><span>PYTHON · STARTER</span><button class="copy-btn">COPY CODE</button></div><pre>import pandas as pd
+import numpy as np
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+
+df = pd.read_csv("sales_B.csv")
+
+print(df.head())
+print(df.shape)
+print(df.columns)
+print(df.info())
+print(df.describe())</pre></div><div class="tip">In Google Colab, upload first with <code>from google.colab import files</code>, <code>uploaded = files.upload()</code>, then read <code>list(uploaded.keys())[0]</code>.</div></section><section class="content-section" id="sec2"><h2>Missing values — identify and handle</h2><p><code>isnull().sum()</code> counts missing values in each column. A common general strategy is median for numeric columns and mode for categorical columns. Follow the question's instruction if it specifies a different method.</p><div class="code-wrap"><div class="code-label"><span>PYTHON · GENERAL IMPUTATION</span><button class="copy-btn">COPY CODE</button></div><pre>print("Missing values before:")
+print(df.isnull().sum())
+
+# Fill numerical columns with their median
+for col in df.select_dtypes(include="number").columns:
+    df[col] = df[col].fillna(df[col].median())
+
+# Fill categorical columns with their mode
+for col in df.select_dtypes(include=["object", "category"]).columns:
+    if df[col].notna().any() and not df[col].mode().empty:
+        df[col] = df[col].fillna(df[col].mode()[0])
+
+print("Missing values after:")
+print(df.isnull().sum())</pre></div><h3>Other common choices</h3><ul><li><code>df.dropna()</code> — remove rows containing missing values.</li><li><code>df["Age"].fillna(df["Age"].mean())</code> — fill a numeric column with its mean.</li><li><code>df["City"].fillna(df["City"].mode()[0])</code> — fill a categorical column with its most frequent value.</li><li><code>df["Column"].fillna(0)</code> — replace missing values with zero when appropriate.</li></ul></section><section class="content-section" id="sec3"><h2>Duplicate records</h2><p>Use this when asked to identify and remove repeated rows. The first occurrence is kept by default.</p><div class="code-wrap"><div class="code-label"><span>PYTHON · DUPLICATE REMOVAL</span><button class="copy-btn">COPY CODE</button></div><pre>print("Duplicate rows:", df.duplicated().sum())
+
+df.drop_duplicates(inplace=True)
+
+print("Duplicates after removal:", df.duplicated().sum())</pre></div></section><section class="content-section" id="sec4"><h2>Create a new calculated column</h2><p>Use column arithmetic when the question gives a formula. In Set B: <code>Total_Amount = Quantity × Unit_Price</code>.</p><div class="code-wrap"><div class="code-label"><span>PYTHON · FEATURE CREATION</span><button class="copy-btn">COPY CODE</button></div><pre>df["Total_Amount"] = df["Quantity"] * df["Unit_Price"]
+
+print(df[["Quantity", "Unit_Price", "Total_Amount"]].head())</pre></div><div class="formula">Total_Amount = Quantity × Unit_Price</div><p>Other examples (only use if the question asks):</p><div class="code-wrap"><div class="code-label"><span>MORE COLUMN FORMULAS</span><button class="copy-btn">COPY CODE</button></div><pre>df["Total"] = df["Price"] * df["Quantity"]
+df["Discount"] = df["Price"] * 0.10
+df["Final_Price"] = df["Price"] - df["Discount"]</pre></div></section><section class="content-section" id="sec5"><h2>Min-Max Normalization</h2><p>Use when the question specifically asks for Min-Max normalization. It rescales numeric values to a chosen range; the default range is 0 to 1.</p><div class="formula">X<sub>scaled</sub> = (X − X<sub>min</sub>) / (X<sub>max</sub> − X<sub>min</sub>)</div><div class="code-wrap"><div class="code-label"><span>PYTHON · MIN-MAX SCALING</span><button class="copy-btn">COPY CODE</button></div><pre>scaler = MinMaxScaler()
+
+df[["Unit_Price"]] = scaler.fit_transform(df[["Unit_Price"]])
+
+print(df[["Unit_Price"]].head())</pre></div><div class="tip">Keep the double brackets: <code>df[["Unit_Price"]]</code> gives Scikit-learn a 2D DataFrame. Change the column name to the one specified in the question.</div></section><section class="content-section" id="sec6"><h2>Standardization (Z-score)</h2><p>Use when the question asks for standardization or Z-score scaling. It transforms values based on the column mean and standard deviation.</p><div class="formula">Z = (X − μ) / σ</div><p>μ = mean; σ = standard deviation. After standardization, the transformed column has mean approximately 0 and standard deviation approximately 1.</p><div class="code-wrap"><div class="code-label"><span>PYTHON · STANDARD SCALING</span><button class="copy-btn">COPY CODE</button></div><pre>scaler = StandardScaler()
+
+df[["Quantity"]] = scaler.fit_transform(df[["Quantity"]])
+
+print(df[["Quantity"]].head())</pre></div></section><section class="content-section" id="sec7"><h2>Save and verify the transformed CSV</h2><p>Save using the exact output filename specified in the question. <code>index=False</code> prevents Pandas from writing an extra index column.</p><div class="code-wrap"><div class="code-label"><span>PYTHON · EXPORT</span><button class="copy-btn">COPY CODE</button></div><pre>df.to_csv("sales_B_transformed.csv", index=False)
+
+print(df.head())
+print("Saved successfully!")</pre></div><div class="tip">For Set B, use <code>sales_B_transformed.csv</code>. For another question, change only the filename.</div></section><section class="content-section" id="sec8"><h2>Complete Set B-style 15-mark program</h2><p>This combined program follows the Set B order: inspect → handle missing values → remove duplicates → calculate Total_Amount → normalize Unit_Price → standardize Quantity → export.</p><div class="code-wrap"><div class="code-label"><span>PYTHON · COMPLETE TEMPLATE</span><button class="copy-btn">COPY CODE</button></div><pre>import pandas as pd
+import numpy as np
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+
+df = pd.read_csv("sales_B.csv")
+
+# 1. Identify and handle missing values
+print(df.isnull().sum())
+
+for col in df.select_dtypes(include="number").columns:
+    df[col] = df[col].fillna(df[col].median())
+
+for col in df.select_dtypes(include=["object", "category"]).columns:
+    if df[col].notna().any() and not df[col].mode().empty:
+        df[col] = df[col].fillna(df[col].mode()[0])
+
+# 2. Identify and remove duplicates
+print("Duplicates:", df.duplicated().sum())
+df.drop_duplicates(inplace=True)
+
+# 3. Create a calculated column
+df["Total_Amount"] = df["Quantity"] * df["Unit_Price"]
+
+# 4. Min-Max normalize Unit_Price
+minmax = MinMaxScaler()
+df[["Unit_Price"]] = minmax.fit_transform(df[["Unit_Price"]])
+
+# 5. Standardize Quantity
+standard = StandardScaler()
+df[["Quantity"]] = standard.fit_transform(df[["Quantity"]])
+
+# 6. Save transformed dataset
+df.to_csv("sales_B_transformed.csv", index=False)
+
+print(df.head())
+print("Saved successfully!")</pre></div><div class="tip warning">This assumes the CSV contains columns named <code>Quantity</code> and <code>Unit_Price</code>. Check the actual column names first. Imputation should happen before scaling.</div></section></div></main>
+<footer><span>CDS227 · Foundation of Data Engineering</span><span>Use the copy buttons to copy code into Google Colab.</span></footer><script src="../js/main.js"></script></body></html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Data Cleaning & Encoding | CDS227</title><link rel="stylesheet" href="../css/style.css"></head><body>
+<header class="topbar"><a class="brand" href="../index.html"><span class="brand-mark">D</span><span>CDS<span class="muted">227</span><small>DATA ENGINEERING LAB</small></span></a><nav><a href="../index.html">Home</a><a href="web-scraping.html">Web Scraping</a><a href="data-cleaning-transformation.html">Transformation</a><a href="data-cleaning-encoding.html">Encoding</a></nav></header>
+<section class="page-hero"><a class="back-link" href="../index.html">← BACK TO HOME</a><div class="eyebrow">PRACTICAL MODULE / CDS227</div><h1>Data Cleaning & Encoding</h1><p>Prepare categorical data with Label Encoding and One-Hot Encoding after cleaning the CSV.</p></section>
+<main class="page-layout"><aside class="sidebar"><b>ON THIS PAGE</b><a href="#sec0">Overview</a><a href="#sec1">What is encoding and when to use it?</a><a href="#sec2">Load and inspect the employee CSV</a><a href="#sec3">Handle missing values and duplicates</a><a href="#sec4">Label Encoding — Department</a><a href="#sec5">One-Hot Encoding — City</a><a href="#sec6">Complete Set A-style 15-mark program</a><a href="#sec7">CSV upload in Google Colab</a></aside><div class="content"><section class="content-section" id="sec0"><h2>What this module covers</h2><p>This module follows Set A: employee information, missing values, duplicate removal, Label Encoding on Department, One-Hot Encoding on City and saving employee_A_cleaned.csv.</p></section><section class="content-section" id="sec1"><h2>What is encoding and when to use it?</h2><p>Machine-learning workflows often need categorical text values converted into numeric form. Choose the method based on the question and the meaning of the category.</p><div class="table-wrap"><table><tr><th>Method</th><th>When to use</th><th>Typical output</th></tr><tr><td>Label Encoding</td><td>Map each category to an integer; use when explicitly requested or for suitable ordinal categories.</td><td>Department → 0, 1, 2</td></tr><tr><td>One-Hot Encoding</td><td>Create a separate binary column for each category; useful for nominal categories.</td><td>City_Chennai, City_Delhi…</td></tr></table></div><div class="tip warning">Label Encoding creates numeric labels, but those numbers do not automatically mean one department is greater than another. For nominal categories, One-Hot Encoding often avoids implying an order.</div></section><section class="content-section" id="sec2"><h2>Load and inspect the employee CSV</h2><p>For Set A, the file is <code>employee_A.csv</code>. Confirm that the columns really are named <code>Department</code> and <code>City</code>.</p><div class="code-wrap"><div class="code-label"><span>PYTHON · LOAD DATA</span><button class="copy-btn">COPY CODE</button></div><pre>import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+
+df = pd.read_csv("employee_A.csv")
+
+print(df.head())
+print(df.columns)
+print(df.info())</pre></div></section><section class="content-section" id="sec3"><h2>Handle missing values and duplicates</h2><p>Clean the data before encoding. This version fills numeric columns with median and text columns with mode, then removes duplicate rows.</p><div class="code-wrap"><div class="code-label"><span>PYTHON · CLEANING</span><button class="copy-btn">COPY CODE</button></div><pre># Identify missing values
+print(df.isnull().sum())
+
+# Fill numerical columns
+for col in df.select_dtypes(include="number").columns:
+    df[col] = df[col].fillna(df[col].median())
+
+# Fill categorical columns
+for col in df.select_dtypes(include="object").columns:
+    if df[col].notna().any() and not df[col].mode().empty:
+        df[col] = df[col].fillna(df[col].mode()[0])
+
+# Identify and remove duplicates
+print("Duplicates:", df.duplicated().sum())
+df.drop_duplicates(inplace=True)
+
+print(df.isnull().sum())</pre></div></section><section class="content-section" id="sec4"><h2>Label Encoding — Department</h2><p>Use this for the Set A instruction: apply Label Encoding to the <code>Department</code> column.</p><div class="code-wrap"><div class="code-label"><span>PYTHON · LABEL ENCODING</span><button class="copy-btn">COPY CODE</button></div><pre>le = LabelEncoder()
+
+df["Department"] = le.fit_transform(df["Department"])
+
+print(df[["Department"]].head())
+print("Mapping:")
+for category, number in zip(le.classes_, le.transform(le.classes_)):
+    print(category, "=", number)</pre></div><div class="tip">Change <code>Department</code> to the categorical column named in the question. The mapping depends on the category values present in the data.</div></section><section class="content-section" id="sec5"><h2>One-Hot Encoding — City</h2><p>Use this for the Set A instruction: apply One-Hot Encoding to the <code>City</code> column.</p><div class="code-wrap"><div class="code-label"><span>PYTHON · ONE-HOT ENCODING</span><button class="copy-btn">COPY CODE</button></div><pre>df = pd.get_dummies(df, columns=["City"], dtype=int)
+
+print(df.head())</pre></div><p>For more than one categorical column:</p><div class="code-wrap"><div class="code-label"><span>MULTIPLE COLUMNS</span><button class="copy-btn">COPY CODE</button></div><pre>df = pd.get_dummies(
+    df,
+    columns=["City", "Gender"],
+    dtype=int
+)</pre></div><div class="tip">One-Hot Encoding replaces the original City column with binary columns such as City_Chennai and City_Mumbai.</div></section><section class="content-section" id="sec6"><h2>Complete Set A-style 15-mark program</h2><p>Full reusable answer for missing values, duplicate removal, Label Encoding of Department, One-Hot Encoding of City and CSV export.</p><div class="code-wrap"><div class="code-label"><span>PYTHON · COMPLETE TEMPLATE</span><button class="copy-btn">COPY CODE</button></div><pre>import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+
+df = pd.read_csv("employee_A.csv")
+
+# 1. Identify and handle missing values
+print(df.isnull().sum())
+
+for col in df.select_dtypes(include="number").columns:
+    df[col] = df[col].fillna(df[col].median())
+
+for col in df.select_dtypes(include="object").columns:
+    if df[col].notna().any() and not df[col].mode().empty:
+        df[col] = df[col].fillna(df[col].mode()[0])
+
+# 2. Identify and remove duplicates
+print("Duplicates:", df.duplicated().sum())
+df.drop_duplicates(inplace=True)
+
+# 3. Label Encoding
+le = LabelEncoder()
+df["Department"] = le.fit_transform(df["Department"])
+
+# 4. One-Hot Encoding
+df = pd.get_dummies(df, columns=["City"], dtype=int)
+
+# 5. Save cleaned dataset
+df.to_csv("employee_A_cleaned.csv", index=False)
+
+print(df.head())
+print("Saved successfully!")</pre></div><div class="tip warning">If the question changes the column names, replace <code>Department</code> and <code>City</code>. If it asks for only one encoding operation, omit the other one.</div></section><section class="content-section" id="sec7"><h2>CSV upload in Google Colab</h2><p>If the examiner gives you a file to upload from your computer, run this cell first. It reads the uploaded CSV without needing to type the filename.</p><div class="code-wrap"><div class="code-label"><span>GOOGLE COLAB</span><button class="copy-btn">COPY CODE</button></div><pre>from google.colab import files
+uploaded = files.upload()
+
+filename = list(uploaded.keys())[0]
+df = pd.read_csv(filename)
+
+print("Uploaded:", filename)
+print(df.head())</pre></div><p>To download your final output:</p><div class="code-wrap"><div class="code-label"><span>DOWNLOAD RESULT</span><button class="copy-btn">COPY CODE</button></div><pre>from google.colab import files
+files.download("employee_A_cleaned.csv")</pre></div></section></div></main>
+<footer><span>CDS227 · Foundation of Data Engineering</span><span>Use the copy buttons to copy code into Google Colab.</span></footer><script src="../js/main.js"></script></body></html>

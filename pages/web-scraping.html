@@ -1,0 +1,247 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Web Scraping & API Extraction | CDS227</title><link rel="stylesheet" href="../css/style.css"></head><body>
+<header class="topbar"><a class="brand" href="../index.html"><span class="brand-mark">D</span><span>CDS<span class="muted">227</span><small>DATA ENGINEERING LAB</small></span></a><nav><a href="../index.html">Home</a><a href="web-scraping.html">Web Scraping</a><a href="data-cleaning-transformation.html">Transformation</a><a href="data-cleaning-encoding.html">Encoding</a></nav></header>
+<section class="page-hero"><a class="back-link" href="../index.html">← BACK TO HOME</a><div class="eyebrow">PRACTICAL MODULE / CDS227</div><h1>Web Scraping & API Extraction</h1><p>A source-aligned guide to the three notebooks you uploaded: TMDB API extraction, Books to Scrape and OYO hotel listings.</p></section>
+<main class="page-layout"><aside class="sidebar"><b>ON THIS PAGE</b><a href="#sec0">Overview</a><a href="#sec1">What your uploaded notebooks teach</a><a href="#sec2">A. API extraction — TMDB movies</a><a href="#sec3">B. Books website — static HTML + pagination</a><a href="#sec4">C. OYO website — headers and optional fields</a><a href="#sec5">D. Universal BeautifulSoup patterns</a><a href="#sec6">E. API vs website scraping — quick decision</a></aside><div class="content"><section class="content-section" id="sec0"><h2>What this module covers</h2><p>The uploaded notebooks show API extraction with TMDB JSON, static website scraping with BeautifulSoup and pagination, and hotel listing extraction using request headers plus optional-field handling. The exam papers you shared earlier ask for website scraping, but API extraction is useful additional preparation.</p></section><section class="content-section" id="sec1"><h2>What your uploaded notebooks teach</h2>
+<p>I reviewed all three notebooks. They demonstrate three distinct extraction patterns:</p>
+<div class="table-wrap"><table>
+<tr><th>Notebook</th><th>Extraction type</th><th>Fields / result</th><th>Main tools</th></tr>
+<tr><td><code>API.ipynb</code></td><td>REST API</td><td>TMDB top-rated movies: title, original language, overview, popularity</td><td>Requests, JSON, Pandas</td></tr>
+<tr><td><code>book_Web_Scraping.ipynb</code></td><td>Static HTML + pagination</td><td>Book title, price, rating, availability</td><td>Requests, BeautifulSoup, Pandas</td></tr>
+<tr><td><code>oyoWebScraping.ipynb</code></td><td>HTML page scraping</td><td>Hotel name, star rating, review summary, image, price, address</td><td>Requests, headers, BeautifulSoup, Pandas</td></tr>
+</table></div>
+<div class="tip">Conclusion: for an API, parse JSON. For a website, parse HTML. Both workflows end by collecting records in a list, creating a DataFrame and exporting CSV.</div>
+</section><section class="content-section" id="sec2"><h2>A. API extraction — TMDB movies</h2>
+<p><strong>Use when:</strong> the question gives an API URL and API key. Your API notebook calls the TMDB top-rated movies endpoint, reads the JSON response, selects the <code>results</code> list and extracts four columns.</p>
+<h3>Master code — one API page</h3>
+<div class="code-wrap"><div class="code-label"><span>PYTHON · ONE PAGE</span><button class="copy-btn">COPY CODE</button></div><pre>import requests
+import pandas as pd
+
+api_key = "PASTE_YOUR_OWN_API_KEY"
+url = "https://api.themoviedb.org/3/movie/top_rated"
+
+params = {
+    "api_key": api_key,
+    "language": "en-US",
+    "page": 1
+}
+
+response = requests.get(url, params=params, timeout=20)
+response.raise_for_status()
+
+data = response.json()
+print(data.keys())
+
+df = pd.DataFrame(data["results"])[
+    ["title", "original_language", "overview", "popularity"]
+]
+
+print(df.head())
+df.to_csv("movies.csv", index=False)</pre></div>
+<h3>Master code — multiple pages</h3>
+<p>Your notebook loops through pages and appends each page's DataFrame to a list, then combines them with <code>pd.concat()</code>. This is the reusable version; it uses the API's <code>total_pages</code> response rather than hard-coding a page count.</p>
+<div class="code-wrap"><div class="code-label"><span>PYTHON · PAGINATED API</span><button class="copy-btn">COPY CODE</button></div><pre>import requests
+import pandas as pd
+
+api_key = "PASTE_YOUR_OWN_API_KEY"
+url = "https://api.themoviedb.org/3/movie/top_rated"
+
+all_rows = []
+page = 1
+total_pages = 1
+
+while page &lt;= total_pages:
+    params = {
+        "api_key": api_key,
+        "language": "en-US",
+        "page": page
+    }
+
+    response = requests.get(url, params=params, timeout=20)
+    response.raise_for_status()
+    data = response.json()
+
+    total_pages = min(data.get("total_pages", 1), 500)
+
+    for movie in data.get("results", []):
+        all_rows.append({
+            "title": movie.get("title"),
+            "original_language": movie.get("original_language"),
+            "overview": movie.get("overview"),
+            "popularity": movie.get("popularity")
+        })
+
+    page += 1
+
+df = pd.DataFrame(all_rows)
+print(df.head())
+print("Total records:", len(df))
+df.to_csv("tmdb_movies.csv", index=False)</pre></div>
+<div class="tip">The notebook's key pattern is <code>response.json()['results']</code>, then selecting columns from that list. <code>pd.concat(list_of_dataframes, ignore_index=True)</code> combines page-wise DataFrames.</div>
+<div class="tip warning">The uploaded API notebook contains a hard-coded API credential. Do not reuse or publish that credential. Regenerate/revoke it in the provider account and use your own key privately. Never put a real key in a public GitHub repository.</div>
+</section><section class="content-section" id="sec3"><h2>B. Books website — static HTML + pagination</h2>
+<p><strong>Use when:</strong> a question provides a normal website URL and asks for book details. Your notebook extracts title, price, rating and stock/availability from each <code>article.product_pod</code> and iterates through catalogue pages.</p>
+<h3>Single-page pattern</h3>
+<div class="code-wrap"><div class="code-label"><span>PYTHON · ONE PAGE</span><button class="copy-btn">COPY CODE</button></div><pre>import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+
+url = "https://books.toscrape.com/"
+webpage = requests.get(url, timeout=20).text
+soup = BeautifulSoup(webpage, "lxml")
+
+books = soup.find_all("article", class_="product_pod")
+data = []
+
+for book in books:
+    title = book.h3.a["title"]
+    price = book.find("p", class_="price_color").get_text(strip=True)
+    rating = book.find("p", class_="star-rating")["class"][1]
+    stock = book.find("p", class_="instock availability").get_text(strip=True)
+
+    data.append({
+        "Title": title,
+        "Price": price,
+        "Rating": rating,
+        "Stock": stock
+    })
+
+df = pd.DataFrame(data)
+print(df.head())</pre></div>
+<h3>Multi-page pattern — matching your notebook</h3>
+<div class="code-wrap"><div class="code-label"><span>PYTHON · 50 CATALOGUE PAGES</span><button class="copy-btn">COPY CODE</button></div><pre>import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+import time
+
+base_url = "https://books.toscrape.com/catalogue/page-{}.html"
+all_books = []
+
+for page in range(1, 51):
+    url = base_url.format(page)
+    response = requests.get(url, timeout=20)
+    response.raise_for_status()
+
+    print("Scraping page:", page)
+    soup = BeautifulSoup(response.text, "html.parser")
+    books = soup.find_all("article", class_="product_pod")
+
+    for book in books:
+        title = book.h3.a["title"]
+        price = book.find("p", class_="price_color").get_text(strip=True)
+        rating = book.find("p", class_="star-rating")["class"][1]
+        availability = book.find(
+            "p", class_="instock availability"
+        ).get_text(strip=True)
+
+        all_books.append({
+            "Title": title,
+            "Price": price,
+            "Rating": rating,
+            "Availability": availability
+        })
+
+    time.sleep(0.2)  # small delay between page requests
+
+df = pd.DataFrame(all_books)
+print("Total records:", len(df))
+print(df.head())
+
+df.to_csv("books_scraped.csv", index=False)</pre></div>
+<div class="tip">Your notebook uses <code>range(1, 51)</code> for the 50 catalogue pages. For an exam asking for at least 20 books, stop after 20 records or scrape one or more pages and keep the first 20.</div>
+</section><section class="content-section" id="sec4"><h2>C. OYO website — headers and optional fields</h2>
+<p><strong>Use when:</strong> the question asks to extract hotel listings from a page whose HTML is returned by a request. Your notebook sets browser-like request headers, parses the page with BeautifulSoup and finds hotel cards using a CSS class.</p>
+<p>Fields extracted in your notebook: hotel name, star rating, review-count/summary text, image URL, displayed price and address.</p>
+<h3>OYO extraction template — based on your notebook selectors</h3>
+<div class="code-wrap"><div class="code-label"><span>PYTHON · OYO HOTEL LISTINGS</span><button class="copy-btn">COPY CODE</button></div><pre>import requests
+import pandas as pd
+from bs4 import BeautifulSoup
+
+url = "PASTE_THE_PROVIDED_OYO_SEARCH_URL"
+
+headers = {
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "text/html,application/xhtml+xml",
+    "Accept-Language": "en-US,en;q=0.9"
+}
+
+response = requests.get(url, headers=headers, timeout=25)
+response.raise_for_status()
+
+soup = BeautifulSoup(response.text, "lxml")
+
+hotels = soup.find_all(
+    "div",
+    class_="oyo-cell--12-col oyo-cell--8-col-tablet oyo-cell--4-col-phone"
+)
+
+hotel_list = []
+
+for hotel in hotels:
+    name_tag = hotel.find(
+        "h3",
+        class_="listingHotelDescription__hotelName d-textEllipsis"
+    )
+    rating_tag = hotel.find(
+        "span",
+        class_="is-fontBold hotelRating__rating hotelRating__rating--verygood hotelRating__rating--clickable"
+    )
+    review_tag = hotel.find(
+        "span",
+        class_="hotelRating__ratingSummary hotelRating__rating--clickable"
+    )
+    address_tag = hotel.find("span", class_="u-line--clamp-2")
+    price_tag = hotel.find(
+        "span",
+        class_="listingPrice__finalPrice listingPrice__finalPrice--black"
+    )
+    image_tag = hotel.find("div", class_="c-ahj8kj")
+
+    hotel_list.append({
+        "name": name_tag.get("title") if name_tag else None,
+        "star_rating": rating_tag.get_text(strip=True) if rating_tag else None,
+        "num_rating": review_tag.get_text(strip=True) if review_tag else None,
+        "image": image_tag.img.get("src") if image_tag and image_tag.img else None,
+        "price": price_tag.get_text(strip=True) if price_tag else None,
+        "Address": address_tag.get("title") if address_tag else None
+    })
+
+df = pd.DataFrame(hotel_list)
+print("Hotels found:", len(df))
+print(df.head())
+
+df.to_csv("oyo.csv", index=False)</pre></div>
+<div class="tip">Your notebook first tries direct extraction, then uses <code>try/except</code> for each field so one missing field does not stop the whole loop. The template above uses the same idea with checks such as <code>if price_tag else None</code>.</div>
+<div class="tip warning">OYO pages may render listing data dynamically or change their HTML class names. If <code>len(hotels)</code> is 0, inspect the response HTML and confirm the data is present in the returned page. A browser User-Agent header does not guarantee that the server will return the same content as a browser. Follow the site's terms and access rules.</div>
+</section><section class="content-section" id="sec5"><h2>D. Universal BeautifulSoup patterns</h2>
+<div class="table-wrap"><table>
+<tr><th>Purpose</th><th>Syntax</th></tr>
+<tr><td>Download page</td><td><code>requests.get(url).text</code></td></tr>
+<tr><td>Send headers</td><td><code>requests.get(url, headers=headers)</code></td></tr>
+<tr><td>Parse HTML</td><td><code>BeautifulSoup(webpage, "lxml")</code></td></tr>
+<tr><td>Find one element</td><td><code>soup.find("h3", class_="name")</code></td></tr>
+<tr><td>Find all elements</td><td><code>soup.find_all("div", class_="card")</code></td></tr>
+<tr><td>Extract text</td><td><code>tag.get_text(strip=True)</code></td></tr>
+<tr><td>Extract attribute</td><td><code>tag["title"]</code> or <code>tag.get("href")</code></td></tr>
+<tr><td>Inspect HTML</td><td><code>print(soup.prettify())</code></td></tr>
+<tr><td>DataFrame</td><td><code>pd.DataFrame(records)</code></td></tr>
+<tr><td>Export CSV</td><td><code>df.to_csv("output.csv", index=False)</code></td></tr>
+</table></div>
+<h3>How to change the code for a new question</h3>
+<ol>
+<li>Change the URL / endpoint.</li>
+<li>Inspect the returned HTML or JSON structure.</li>
+<li>Change the selectors or JSON key.</li>
+<li>Change the fields and DataFrame column names.</li>
+<li>Change the output CSV filename.</li>
+<li>Check <code>df.head()</code> and the record count.</li>
+</ol>
+</section><section class="content-section" id="sec6"><h2>E. API vs website scraping — quick decision</h2>
+<div class="table-wrap"><table>
+<tr><th>If the question gives…</th><th>Use…</th><th>Extract from…</th></tr>
+<tr><td>API endpoint + API key</td><td><code>requests.get()</code> + <code>response.json()</code></td><td>JSON keys / list, often <code>data["results"]</code></td></tr>
+<tr><td>Website URL with HTML elements</td><td><code>requests.get()</code> + <code>BeautifulSoup()</code></td><td>HTML tags, classes and attributes</td></tr>
+<tr><td>Several result pages</td><td>Loop + append to list</td><td>API page parameter or website pagination URL</td></tr>
+</table></div>
+<div class="tip">Common workflow for all three notebooks: imports → request → parse response → extract records into a list → DataFrame → head() → to_csv(). The parsing step is what changes between API JSON and website HTML.</div>
+</section></div></main>
+<footer><span>CDS227 · Foundation of Data Engineering</span><span>Copy code into Google Colab and adapt the marked values.</span></footer><script src="../js/main.js"></script></body></html>

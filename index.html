@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CDS227 | Data Engineering Lab Codebook</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html"><span class="brand-mark">D</span><span>CDS<span class="muted">227</span><small>DATA ENGINEERING LAB</small></span></a>
+    <nav><a class="active" href="index.html">Home</a><a href="pages/web-scraping.html">Web Scraping</a><a href="pages/data-cleaning-transformation.html">Transformation</a><a href="pages/data-cleaning-encoding.html">Encoding</a></nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="eyebrow"><span class="pulse"></span> PRACTICAL MID-SEM PREPARATION</div>
+      <h1>Build your <span class="gradient-text">data engineering</span><br>lab confidence.</h1>
+      <p class="hero-copy">A practical codebook for CDS227. Learn the reusable Python patterns behind web scraping, CSV cleaning, transformation and encoding — then adapt filenames, URLs and column names to the question.</p>
+      <div class="hero-actions"><a class="btn primary" href="pages/web-scraping.html">Explore the codebook <span>↗</span></a><a class="btn secondary" href="#sections">View all topics</a></div>
+      <div class="hero-meta"><span>03 CORE MODULES</span><span>16+ REUSABLE OPERATIONS</span><span>GOOGLE COLAB READY</span></div>
+    </section>
+
+    <section class="section-wrap" id="sections">
+      <div class="section-heading"><div><div class="eyebrow">THE LEARNING PATH</div><h2>Choose a practical module</h2></div><p>Each module includes when to use it, syntax, formulas, full programs and exam tips.</p></div>
+      <div class="module-grid">
+        <a class="module-card card-blue" href="pages/web-scraping.html">
+          <div class="card-top"><span class="module-number">01 / EXTRACTION</span><span class="arrow">↗</span></div>
+          <div class="icon-box">⌘</div><h3>Web Scraping</h3>
+          <p>Extract data from REST APIs and websites using Requests, JSON, BeautifulSoup and Pandas.</p>
+          <div class="tag-row"><span>Requests / API</span><span>BeautifulSoup</span><span>DataFrame</span></div>
+          <div class="card-footer">OPEN MODULE <span>→</span></div>
+        </a>
+        <a class="module-card card-purple" href="pages/data-cleaning-transformation.html">
+          <div class="card-top"><span class="module-number">02 / PREPROCESSING</span><span class="arrow">↗</span></div>
+          <div class="icon-box">⌁</div><h3>Data Cleaning &amp; Transformation</h3>
+          <p>Handle missing values and duplicates, create columns, normalize and standardize numerical data.</p>
+          <div class="tag-row"><span>Pandas</span><span>NumPy</span><span>Scikit-learn</span></div>
+          <div class="card-footer">OPEN MODULE <span>→</span></div>
+        </a>
+        <a class="module-card card-green" href="pages/data-cleaning-encoding.html">
+          <div class="card-top"><span class="module-number">03 / CATEGORICAL DATA</span><span class="arrow">↗</span></div>
+          <div class="icon-box">▦</div><h3>Data Cleaning &amp; Encoding</h3>
+          <p>Prepare categorical columns with Label Encoding and One-Hot Encoding, then export the result.</p>
+          <div class="tag-row"><span>LabelEncoder</span><span>get_dummies</span><span>CSV</span></div>
+          <div class="card-footer">OPEN MODULE <span>→</span></div>
+        </a>
+      </div>
+    </section>
+
+    <section class="quick-panel">
+      <div><div class="eyebrow">EXAM STRATEGY</div><h2>Same workflow.<br><span class="gradient-text">Small edits.</span></h2><p>Most question variations change the website, CSV filename, column names or required operation. Learn the reusable pattern, then adapt only those parts.</p></div>
+      <div class="workflow">
+        <div><b>01</b><span>Read the question</span><small>Identify source, columns and output filename.</small></div>
+        <div><b>02</b><span>Load or extract data</span><small>Use Requests / BeautifulSoup or Pandas.</small></div>
+        <div><b>03</b><span>Apply operations</span><small>Clean, encode or transform as required.</small></div>
+        <div><b>04</b><span>Verify and export</span><small>Check head(), missing values and save CSV.</small></div>
+      </div>
+    </section>
+    <section class="notice"><strong>Important:</strong> These templates are based on the Set A and Set B papers shared. Always inspect a new website's HTML and verify the CSV's actual column names before running code.</section>
+  </main>
+  <footer><span>CDS227 · Foundation of Data Engineering</span><span>Built for practical revision · HTML / CSS / JavaScript</span></footer>
+  <script src="js/main.js"></script>
+</body>
+</html>
